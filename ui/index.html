@@ -1,0 +1,545 @@
+<!--
+  maya_os/ui/index.html  --  Maya OS, basic interface.
+
+  One file. No build step, no CDN, no font request. It has to work the moment
+  pip finishes, on a machine with no internet, which is why nothing here loads
+  from anywhere.
+
+  Design system lifted from the MAAYA app: #0A0909 ground, pearl text, coral
+  accent, glass surfaces, Manrope with Playfair for the quiet moments.
+-->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maya OS</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='7' fill='%23C61B48'/%3E%3C/svg%3E">
+
+<style>
+:root{
+  --ground:#0A0909; --pearl:#FDFCF8;
+  --rose:#C61B48;        /* the darker maroon. primary accent */
+  --rose-gold:#E5B1AB;   /* the living dark peach. text and hairlines */
+  --slate:#708090;
+  --ok:#4ade80; --warn:#fbbf24; --fail:#f87171; --info:#a78bfa;
+  --sans:'Manrope',system-ui,-apple-system,sans-serif;
+  --serif:'Playfair Display',Georgia,serif;
+  --mono:'Space Mono','SF Mono',ui-monospace,monospace;
+  --expo:cubic-bezier(.16,1,.3,1);
+  --glass:rgba(253,252,248,.02); --hair:rgba(229,177,171,.08);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body{
+  background:var(--ground); color:var(--pearl); font-family:var(--sans);
+  font-size:15px; line-height:1.65; -webkit-font-smoothing:antialiased;
+  overflow:hidden;
+}
+::selection{background:rgba(229,177,171,.25)}
+::-webkit-scrollbar{width:10px} ::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(229,177,171,.1); border-radius:6px}
+::-webkit-scrollbar-thumb:hover{background:rgba(229,177,171,.2)}
+
+/* ambient ------------------------------------------------------- */
+.orb{position:fixed; filter:blur(120px); border-radius:50%; opacity:.08;
+  pointer-events:none; z-index:0}
+.orb-a{width:520px;height:520px;top:-160px;left:-120px;
+  background:radial-gradient(circle,rgba(198,27,72,.6),rgba(198,27,72,.08));
+  animation:breathe 9s ease-in-out infinite}
+.orb-b{width:420px;height:420px;bottom:-140px;right:-100px;
+  background:radial-gradient(circle,rgba(229,177,171,.5),rgba(229,177,171,.05));
+  animation:drift 14s ease-in-out infinite}
+@keyframes breathe{0%,100%{transform:scale(1);opacity:.07}50%{transform:scale(1.06);opacity:.1}}
+@keyframes drift{0%,100%{transform:translate(0,0)}33%{transform:translate(14px,-14px)}66%{transform:translate(-14px,14px)}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes pulseGlow{0%,100%{opacity:.55}50%{opacity:1}}
+
+/* frame --------------------------------------------------------- */
+.app{position:relative; z-index:1; height:100%; display:flex; flex-direction:column}
+header{
+  height:64px; display:flex; align-items:center; gap:14px; padding:0 22px;
+  border-bottom:1px solid var(--hair); background:rgba(10,9,9,.7);
+  backdrop-filter:blur(20px); flex:none;
+}
+.mark{display:flex; align-items:center; gap:14px; margin-right:auto}
+/* Her name is the logo, with a dot that breathes beside it. Nothing drawn
+   around either. Wordmark per index-redesign.html: Playfair, italic,
+   lowercase, light. */
+.mark .pulse{width:9px; height:9px; border-radius:50%; flex:none; position:relative;
+  background:var(--rose); animation:heart 3.2s ease-in-out infinite}
+.mark .pulse::after{content:""; position:absolute; inset:-9px; border-radius:50%;
+  background:radial-gradient(circle,rgba(198,27,72,.45),transparent 70%);
+  animation:halo 3.2s ease-in-out infinite}
+@keyframes heart{
+  0%,100%{transform:scale(1);    box-shadow:0 0 8px rgba(198,27,72,.45)}
+  50%    {transform:scale(1.2);  box-shadow:0 0 20px rgba(198,27,72,.75)}}
+@keyframes halo{0%,100%{opacity:.28;transform:scale(.85)}50%{opacity:.7;transform:scale(1.25)}}
+@media (prefers-reduced-motion:reduce){
+  .mark .pulse,.mark .pulse::after,.orb{animation:none}}
+.mark .name{display:flex; flex-direction:column; line-height:1}
+.mark b{font-family:var(--serif); font-style:italic; font-weight:300;
+  font-size:27px; letter-spacing:.02em; color:var(--pearl); line-height:1}
+.mark span{font-family:var(--mono); font-size:9px; letter-spacing:.3em;
+  text-transform:uppercase; color:rgba(229,177,171,.3); margin-top:6px}
+.chip{display:inline-flex; align-items:center; gap:8px; padding:6px 13px;
+  border:1px solid var(--hair); border-radius:999px; background:var(--glass);
+  font-size:12px; color:var(--rose-gold); white-space:nowrap; font-family:var(--mono)}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--slate);flex:none;
+  animation:pulseGlow 2.6s ease-in-out infinite}
+.dot.ok{background:var(--ok)} .dot.bad{background:var(--fail)}
+.btn{border:1px solid var(--hair); background:var(--glass); color:var(--pearl);
+  border-radius:999px; padding:7px 15px; font:inherit; font-size:13px;
+  cursor:pointer; transition:all .35s var(--expo); backdrop-filter:blur(10px)}
+.btn:hover{border-color:rgba(198,27,72,.45); color:var(--rose)}
+
+main{flex:1; overflow-y:auto; padding:34px 22px 260px}
+.wrap{max-width:820px; margin:0 auto}
+
+/* first run ----------------------------------------------------- */
+.hello{padding:44px 0; animation:fadeUp .8s var(--expo) both}
+.hello .eyebrow{font-family:var(--mono); font-size:11px; letter-spacing:.2em;
+  text-transform:uppercase; color:var(--rose); margin-bottom:20px;
+  display:flex; align-items:center; gap:12px}
+.hello .eyebrow::before{content:"";width:26px;height:1px;background:var(--rose)}
+.hello h1{font-family:var(--serif); font-size:44px; line-height:1.12;
+  font-weight:400; letter-spacing:-.02em; margin-bottom:16px}
+.hello h1 i{color:var(--rose); font-style:italic}
+.hello p{color:var(--rose-gold); opacity:.6; max-width:52ch; margin-bottom:14px;
+  font-size:15.5px}
+.hello p.second{opacity:.4; margin-bottom:30px}
+.setup{display:grid; gap:12px; grid-template-columns:repeat(auto-fit,minmax(232px,1fr))}
+.card{border:1px solid var(--hair); background:var(--glass); border-radius:16px;
+  padding:18px; backdrop-filter:blur(20px); cursor:pointer;
+  transition:all .4s var(--expo); text-align:left}
+.card:hover{border-color:rgba(198,27,72,.4); transform:translateY(-2px)}
+.card h3{font-size:14.5px; font-weight:600; margin-bottom:6px;
+  display:flex; align-items:center; gap:9px}
+.card h3 em{font-family:var(--mono); font-style:normal; font-size:10px;
+  color:var(--ground); background:var(--rose); border-radius:4px; padding:2px 6px}
+.card p{font-size:13px; color:var(--rose-gold); opacity:.55; margin:0}
+.card.done h3 em{background:var(--ok)}
+
+/* conversation -------------------------------------------------- */
+.turn{margin-bottom:26px; animation:fadeUp .55s var(--expo) both}
+.you{margin-left:auto; width:fit-content; max-width:78%; padding:13px 18px;
+  border-radius:18px 18px 4px 18px; background:rgba(198,27,72,.1);
+  border:1px solid rgba(198,27,72,.22)}
+.her{border:1px solid var(--hair); background:var(--glass); border-radius:18px;
+  backdrop-filter:blur(20px); overflow:hidden}
+.meta{display:flex; flex-wrap:wrap; align-items:center; gap:9px; padding:11px 18px;
+  border-bottom:1px solid var(--hair); font-family:var(--mono); font-size:11px}
+.route{color:var(--rose); text-transform:uppercase; letter-spacing:.1em}
+.tag{color:var(--slate)}
+.srcbtn{margin-left:auto; border:1px solid var(--hair); background:none;
+  color:var(--slate); border-radius:999px; padding:3px 11px; font:inherit;
+  font-size:10.5px; cursor:pointer; font-family:var(--mono)}
+.srcbtn:hover{color:var(--rose-gold); border-color:rgba(229,177,171,.25)}
+.sources{padding:2px 18px 12px; border-bottom:1px solid var(--hair)}
+.src{padding:10px 0; border-top:1px solid rgba(229,177,171,.05)}
+.src h4{font-size:13px; font-weight:600; margin-bottom:2px}
+.src time{font-family:var(--mono); font-size:10.5px; color:var(--slate)}
+.src p{font-size:12.5px; color:var(--rose-gold); opacity:.5; margin-top:4px}
+.body{padding:8px 18px 18px}
+
+details.think{margin:10px 0; border-left:1px solid rgba(198,27,72,.3); padding-left:14px}
+details.think summary{cursor:pointer; list-style:none; font-family:var(--mono);
+  font-size:10.5px; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--slate); padding:3px 0}
+details.think summary::-webkit-details-marker{display:none}
+details.think summary::before{content:"+ ";color:var(--rose)}
+details.think[open] summary::before{content:"- "}
+details.think .in{font-size:13.5px; color:var(--slate); white-space:pre-wrap; padding:6px 0}
+
+.md>*:first-child{margin-top:6px} .md>*:last-child{margin-bottom:0}
+.md h1,.md h2,.md h3{font-family:var(--serif); font-weight:400; letter-spacing:-.01em;
+  margin:20px 0 8px; line-height:1.25}
+.md h1{font-size:23px} .md h2{font-size:20px} .md h3{font-size:17px}
+.md p{margin:10px 0} .md ul,.md ol{margin:10px 0; padding-left:21px}
+.md li{margin:4px 0} .md strong{color:#fff; font-weight:600}
+.md code{font-family:var(--mono); font-size:12.5px; background:rgba(229,177,171,.07);
+  border:1px solid var(--hair); border-radius:5px; padding:1px 6px}
+.md pre{background:rgba(0,0,0,.35); border:1px solid var(--hair); border-radius:12px;
+  padding:14px 16px; overflow-x:auto; margin:12px 0}
+.md pre code{background:none;border:none;padding:0;font-size:12.5px;line-height:1.6}
+.md table{border-collapse:collapse; width:100%; margin:13px 0; font-size:13.5px;
+  display:block; overflow-x:auto}
+.md th,.md td{border:1px solid var(--hair); padding:8px 11px; text-align:left; vertical-align:top}
+.md th{background:rgba(229,177,171,.04); font-weight:600}
+.md blockquote{border-left:2px solid var(--rose); padding-left:14px; margin:12px 0;
+  color:var(--rose-gold); opacity:.6}
+.md hr{border:none;border-top:1px solid var(--hair);margin:18px 0}
+.md a{color:var(--rose)}
+
+/* composer ------------------------------------------------------ */
+.composer{position:fixed; left:0; right:0; bottom:0; z-index:2; padding:16px 22px 22px;
+  background:linear-gradient(to top,var(--ground) 62%,rgba(10,9,9,0))}
+.composer .in{max-width:820px; margin:0 auto}
+.box{border:1px solid var(--hair); background:rgba(253,252,248,.03); border-radius:20px;
+  padding:13px 15px; backdrop-filter:blur(20px); transition:border-color .4s var(--expo)}
+.box:focus-within{border-color:rgba(198,27,72,.4)}
+textarea{width:100%; border:none; outline:none; resize:none; background:none;
+  color:var(--pearl); font:inherit; max-height:190px; line-height:1.6}
+textarea::placeholder{color:var(--slate)}
+.row{display:flex; align-items:center; gap:9px; margin-top:10px}
+select{border:1px solid var(--hair); background:rgba(10,9,9,.6); color:var(--slate);
+  border-radius:999px; padding:6px 12px; font:inherit; font-size:12.5px;
+  cursor:pointer; font-family:var(--mono)}
+.send{margin-left:auto; border:none; background:var(--rose); color:#fff;
+  border-radius:999px; padding:9px 22px; font:inherit; font-weight:600; font-size:14px;
+  cursor:pointer; transition:all .35s var(--expo)}
+.send:hover{box-shadow:0 0 24px rgba(198,27,72,.35)}
+.send:disabled{background:rgba(229,177,171,.14); cursor:not-allowed; box-shadow:none}
+.hint{text-align:center; font-family:var(--mono); font-size:10.5px; color:var(--slate);
+  margin-top:11px; letter-spacing:.05em}
+.thumbs{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:9px}
+.thumb{width:48px;height:48px;border-radius:9px;object-fit:cover;border:1px solid var(--hair)}
+
+/* drawer -------------------------------------------------------- */
+.drawer{position:fixed; inset:0; background:rgba(10,9,9,.75); backdrop-filter:blur(8px);
+  display:none; z-index:40; padding:70px 20px 20px}
+.drawer.open{display:block}
+.panel{max-width:660px; margin:0 auto; border:1px solid var(--hair);
+  background:rgba(20,18,18,.96); border-radius:20px; max-height:100%;
+  display:flex; flex-direction:column; overflow:hidden;
+  animation:fadeUp .5s var(--expo) both}
+.panel .top{display:flex; align-items:center; gap:10px; padding:16px;
+  border-bottom:1px solid var(--hair)}
+.panel .top h2{font-family:var(--serif); font-weight:400; font-size:19px; margin-right:auto}
+.panel input,.panel .num{flex:1; border:1px solid var(--hair); background:rgba(0,0,0,.3);
+  color:var(--pearl); border-radius:999px; padding:9px 15px; font:inherit; outline:none}
+.panel input:focus{border-color:rgba(198,27,72,.45)}
+.panel .content{overflow-y:auto; padding:8px 18px 20px}
+.field{display:flex; align-items:center; gap:12px; padding:12px 0;
+  border-bottom:1px solid rgba(229,177,171,.05)}
+.field label{flex:1; font-size:13.5px}
+.field label small{display:block; color:var(--slate); font-size:11.5px; margin-top:2px}
+.field input[type=range]{flex:1; accent-color:var(--rose)}
+.field .val{font-family:var(--mono); font-size:12px; color:var(--rose);
+  min-width:56px; text-align:right}
+.note{font-family:var(--mono); font-size:11px; color:var(--slate); padding:14px 0 4px;
+  line-height:1.7}
+
+@media (max-width:640px){
+  main{padding:22px 15px 280px} .composer{padding:12px 15px 16px}
+  .hello h1{font-size:31px} .you{max-width:92%} header{padding:0 15px; gap:9px}
+  .hide-sm{display:none}
+}
+
+/* empty state. the input is the page, not a footer. copy stays out of the way. */
+.empty main{display:flex; align-items:center; justify-content:center; padding:0 22px}
+.empty .composer{position:static; background:none; padding:14px 22px 0}
+.empty #chips{display:flex}
+#chips{display:none; flex-wrap:wrap; gap:9px; justify-content:center;
+  max-width:640px; margin:18px auto 0; padding:0 22px}
+.chip-s{border:1px solid var(--hair); background:transparent; color:var(--rose-gold);
+  border-radius:999px; padding:9px 15px; font-size:13px; cursor:pointer;
+  transition:all .35s var(--expo); font-family:inherit}
+.chip-s:hover{border-color:var(--rose); color:var(--pearl); transform:translateY(-1px)}
+.bigmark{display:flex; flex-direction:column; align-items:center; gap:14px}
+.bigmark .halo{width:13px; height:13px; border-radius:50%; background:var(--rose);
+  box-shadow:0 0 30px 7px rgba(198,27,72,.4); animation:breathe 6s ease-in-out infinite}
+.bigmark h1{font-family:var(--serif); font-style:italic; font-weight:500;
+  font-size:46px; letter-spacing:-.01em; margin:0; color:var(--pearl)}
+.bigmark .sub{font-family:var(--serif); font-style:italic; font-size:13.5px;
+  letter-spacing:.16em; color:rgba(253,252,248,.26)}
+</style>
+
+<div class="orb orb-a"></div>
+<div class="orb orb-b"></div>
+
+<div class="app empty" id="app">
+  <header>
+    <div class="mark">
+      <i class="pulse" aria-hidden="true"></i>
+      <div class="name"><b>maya</b><span class="hide-sm">a local intelligence layer</span></div>
+    </div>
+    <span class="chip hide-sm"><span class="dot" id="dot"></span><span id="status">waking</span></span>
+    <button class="btn" id="openMath">The math</button>
+    <button class="btn hide-sm" id="openMem">Memory</button>
+    <button class="btn" id="reset">New</button>
+  </header>
+
+  <main id="main">
+    <div class="wrap" id="wrap">
+      <div class="hello" id="hello">
+        <div class="bigmark">
+          <i class="halo"></i>
+          <h1>maya</h1>
+          <div class="sub">Its her</div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="composer">
+  <div class="in">
+    <div class="box">
+      <div class="thumbs" id="thumbs"></div>
+      <textarea id="input" rows="1" placeholder="Ask her something."></textarea>
+      <div class="row">
+        <button class="btn" id="attach">Image</button>
+        <select id="mode">
+          <option value="">Route by meaning</option>
+          <option value="recall">Recall</option>
+          <option value="fit">Fit</option>
+          <option value="research">Research</option>
+          <option value="design">Design</option>
+          <option value="copy">Copy</option>
+          <option value="campaign">Campaign</option>
+          <option value="think">Think</option>
+        </select>
+        <button class="send" id="send">Send</button>
+      </div>
+    </div>
+    <div class="hint" id="hint">she forgets nothing you gave her, and nothing else</div>
+  </div>
+  <input type="file" id="file" accept="image/*" multiple hidden>
+</div>
+
+<!-- the math, per window ---------------------------------------- -->
+<div class="drawer" id="mathDrawer">
+  <div class="panel">
+    <div class="top">
+      <h2>The math</h2>
+      <button class="btn" id="mathReset">Defaults</button>
+      <button class="btn" id="mathClose">Close</button>
+    </div>
+    <div class="content" id="mathBody"></div>
+  </div>
+
+<div id="chips"><button class="chip-s">What was I working on?</button><button class="chip-s">Should I apply to this?</button><button class="chip-s">What do I know about this company?</button><button class="chip-s">Draft an outreach email</button></div>
+</div>
+
+<div class="drawer" id="memDrawer">
+  <div class="panel">
+    <div class="top">
+      <h2>Memory</h2>
+      <input id="memq" placeholder="Search her memory directly, no model involved">
+      <button class="btn" id="memgo">Find</button>
+      <button class="btn" id="memx">Close</button>
+    </div>
+    <div class="content" id="memres"></div>
+  </div>
+</div>
+
+<script>
+const KEY = "__API_KEY__";
+const H = {"Content-Type":"application/json","Authorization":"Bearer "+KEY};
+const $ = s => document.querySelector(s);
+const esc = s => String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+/* ---- the math. per window, on purpose. a new tab starts clean. ---- */
+const MATH_DEFAULTS = {
+  memories: 3, floor: 0.45, budget: 900, temp_judgment: 0.35,
+  temp_creative: 0.85, reserve: 30, trim: 3500
+};
+const MATH_SPEC = [
+  ["memories","Memories in a prompt","how many threads are pasted in before she answers",1,8,1],
+  ["floor","Relevance floor","weaker matches than this fraction of the best are dropped",0.1,0.9,0.05],
+  ["budget","Answer budget","maximum tokens she will spend replying",200,4000,100],
+  ["temp_judgment","Judgment temperature","scoring, analysis, recall. lower is steadier",0,1,0.05],
+  ["temp_creative","Creative temperature","copy, campaigns, design",0,1.2,0.05],
+  ["reserve","Free tier held back","percent of each day's allowance kept for live use",0,60,5],
+  ["trim","Context ceiling","tokens of history kept before older turns are dropped",1000,16000,500],
+];
+let MATH = JSON.parse(sessionStorage.getItem("maya_math") || "null") || {...MATH_DEFAULTS};
+const saveMath = () => sessionStorage.setItem("maya_math", JSON.stringify(MATH));
+
+function drawMath(){
+  $("#mathBody").innerHTML = MATH_SPEC.map(([k,label,help,min,max,step]) =>
+    `<div class="field"><label>${label}<small>${help}</small></label>
+     <input type="range" data-k="${k}" min="${min}" max="${max}" step="${step}" value="${MATH[k]}">
+     <span class="val" id="v-${k}">${MATH[k]}</span></div>`).join("")
+    + `<p class="note">These belong to this window only. Open a new tab and it
+       starts from defaults again, so you can keep one window cheap and fast and
+       another set for careful work, at the same time.</p>`;
+  $("#mathBody").querySelectorAll("input[type=range]").forEach(r => {
+    r.oninput = () => { MATH[r.dataset.k] = parseFloat(r.value);
+      $("#v-"+r.dataset.k).textContent = r.value; saveMath(); };
+  });
+}
+$("#openMath").onclick = () => { drawMath(); $("#mathDrawer").classList.add("open"); };
+$("#mathClose").onclick = () => $("#mathDrawer").classList.remove("open");
+$("#mathReset").onclick = () => { MATH = {...MATH_DEFAULTS}; saveMath(); drawMath(); };
+
+/* ---- markdown ---- */
+function md(src){
+  let s = esc(src); const blocks = [];
+  s = s.replace(/```(\w*)\n?([\s\S]*?)```/g,(m,l,c)=>" B"+(blocks.push('<pre><code>'+c.replace(/\n$/,"")+'</code></pre>')-1)+" ");
+  const lines = s.split("\n"), out = []; let list=null, tbl=null;
+  const flush=()=>{ if(list){out.push("</"+list+">");list=null;} if(tbl){out.push("</tbody></table>");tbl=null;} };
+  const inl = t => t.replace(/\*\*([^*]+)\*\*/g,"<strong>$1</strong>")
+    .replace(/(^|[^*])\*([^*\n]+)\*/g,"$1<em>$2</em>")
+    .replace(/`([^`]+)`/g,"<code>$1</code>")
+    .replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g,'<a href="$2" target="_blank" rel="noopener">$1</a>');
+  for(const ln of lines){
+    const t = ln.trim(); if(!t){flush();continue;} let m;
+    if(/^\|(.+)\|$/.test(t)){
+      const cells=t.slice(1,-1).split("|").map(c=>c.trim());
+      if(/^\|[\s:|-]+\|$/.test(t)) continue;
+      if(!tbl){out.push("<table><thead><tr>"+cells.map(c=>"<th>"+inl(c)+"</th>").join("")+"</tr></thead><tbody>");tbl=1;continue;}
+      out.push("<tr>"+cells.map(c=>"<td>"+inl(c)+"</td>").join("")+"</tr>"); continue;
+    } else if(tbl){flush();}
+    if((m=t.match(/^(#{1,6})\s+(.*)$/))){flush();const n=Math.min(m[1].length+1,4);out.push(`<h${n}>`+inl(m[2])+`</h${n}>`);continue;}
+    if(/^(---|\*\*\*)$/.test(t)){flush();out.push("<hr>");continue;}
+    if((m=t.match(/^>\s?(.*)$/))){flush();out.push("<blockquote>"+inl(m[1])+"</blockquote>");continue;}
+    if((m=t.match(/^[-*+]\s+(.*)$/))){if(list!=="ul"){flush();out.push("<ul>");list="ul";}out.push("<li>"+inl(m[1])+"</li>");continue;}
+    if((m=t.match(/^\d+[.)]\s+(.*)$/))){if(list!=="ol"){flush();out.push("<ol>");list="ol";}out.push("<li>"+inl(m[1])+"</li>");continue;}
+    if(list||tbl)flush();
+    out.push("<p>"+inl(t)+"</p>");
+  }
+  flush();
+  return out.join("").replace(/ B(\d+) /g,(m,i)=>blocks[+i]);
+}
+function render(raw){
+  let html="",rest=raw,m;
+  while((m=rest.match(/<think>([\s\S]*?)(<\/think>|$)/))){
+    html+=md(rest.slice(0,m.index));
+    html+='<details class="think"><summary>her thinking</summary><div class="in">'+esc(m[1].trim())+'</div></details>';
+    rest=rest.slice(m.index+m[0].length);
+  }
+  return html+md(rest);
+}
+
+/* ---- state ---- */
+let history=[], images=[], busy=false;
+
+async function health(){
+  try{
+    const d = await (await fetch("/health",{headers:H})).json();
+    const mem = d.memory||{}, oll = d.ollama||{};
+    const ok = mem.ready;
+    $("#dot").className = "dot "+(ok?"ok":"bad");
+    $("#status").textContent = mem.chunks
+      ? mem.chunks.toLocaleString()+" memories" : "no memory yet";
+    document.querySelectorAll('.card[data-do="memory"]').forEach(c=>c.classList.toggle("done",!!mem.ready));
+    const lanes = (d.routing||{}).lanes || [];
+    document.querySelectorAll('.card[data-do="keys"]').forEach(c=>c.classList.toggle("done",lanes.length>0));
+  }catch(e){ $("#dot").className="dot bad"; $("#status").textContent="not answering"; }
+}
+health(); setInterval(health,30000);
+
+document.querySelectorAll(".card").forEach(c => c.onclick = () => {
+  const what = c.dataset.ask || c.dataset.do;
+  if(what==="math"){ drawMath(); $("#mathDrawer").classList.add("open"); return; }
+  if(what && what.length>12){ $("#input").value=what; send(); return; }
+  if(what==="memory"){ $("#memDrawer").classList.add("open"); $("#memq").focus(); return; }
+  $("#input").value = "How do I add my model keys?"; send();
+});
+
+/* ---- images ---- */
+$("#attach").onclick=()=>$("#file").click();
+$("#file").onchange=e=>{[...e.target.files].forEach(add);e.target.value="";};
+function add(f){ if(!f||!f.type.startsWith("image/"))return;
+  const r=new FileReader(); r.onload=()=>{images.push({name:f.name,url:r.result});thumbs();}; r.readAsDataURL(f); }
+function thumbs(){ $("#thumbs").innerHTML = images.map(i=>`<img class="thumb" src="${i.url}">`).join(""); }
+document.addEventListener("dragover",e=>e.preventDefault());
+document.addEventListener("drop",e=>{e.preventDefault();[...(e.dataTransfer.files||[])].forEach(add);});
+document.addEventListener("paste",e=>[...(e.clipboardData.files||[])].forEach(add));
+
+/* ---- send ---- */
+const input=$("#input");
+input.addEventListener("input",()=>{input.style.height="auto";input.style.height=input.scrollHeight+"px";});
+input.addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send();}});
+document.querySelectorAll(".chip-s").forEach(c => c.onclick = () => {
+  $("#input").value = c.textContent; send();
+});
+$("#send").onclick=send;
+const _reset0 = () => { $("#app").classList.add("empty"); $("#hello").style.display=""; };
+$("#reset").addEventListener("click", _reset0);
+$("#reset").onclick=()=>{history=[];images=[];thumbs();
+  document.querySelectorAll(".turn").forEach(n=>n.remove()); $("#hello").style.display="";};
+const el=h=>{const d=document.createElement("div");d.innerHTML=h;return d.firstElementChild;};
+
+async function send(){
+  const text=input.value.trim();
+  if((!text&&!images.length)||busy) return;
+  busy=true; $("#send").disabled=true; $("#hello").style.display="none";
+  $("#app").classList.remove("empty");   // input drops to the bottom, chips go
+  const att=images.slice(); images=[]; thumbs();
+
+  const turn=el('<div class="turn"></div>');
+  turn.appendChild(el('<div class="you">'+md(text||"Read this.")+'</div>'));
+  const card=el('<div class="her" style="margin-top:13px"><div class="meta"><span class="route">routing</span></div><div class="body"><div class="md"></div></div></div>');
+  turn.appendChild(card); $("#wrap").appendChild(turn);
+  input.value=""; input.style.height="auto";
+  window.scrollTo(0,document.body.scrollHeight);
+
+  const content = att.length
+    ? [{type:"text",text:text||"Read this."}].concat(att.map(i=>({type:"image_url",image_url:{url:i.url}})))
+    : text;
+  history.push({role:"user",content});
+
+  const body=card.querySelector(".md");   // this turn's own bubble, not a document-wide (and buggy) lookup
+  let raw="",last=0;
+  const paint=()=>{ if(Date.now()-last<80)return; last=Date.now(); body.innerHTML=render(raw); };
+
+  try{
+    const res=await fetch("/v1/chat/completions",{method:"POST",headers:H,
+      body:JSON.stringify({model:"__MODEL__",messages:history,stream:true,
+        mode:$("#mode").value||null, face:"ui", math:MATH,
+        rag_top_k:MATH.memories, max_tokens:MATH.budget})});
+    if(res.status===401) throw new Error("The key in this page and the one the brain expects do not match.");
+    const rd=res.body.getReader(), dec=new TextDecoder(); let buf="";
+    for(;;){
+      const {value,done}=await rd.read(); if(done)break;
+      buf+=dec.decode(value,{stream:true});
+      const parts=buf.split("\n\n"); buf=parts.pop();
+      for(const p of parts){
+        const l=p.trim(); if(!l.startsWith("data:"))continue;
+        const pl=l.slice(5).trim(); if(pl==="[DONE]")continue;
+        let o; try{o=JSON.parse(pl);}catch(e){continue;}
+        if(o.x_route) meta(card,o);
+        const d=o.choices&&o.choices[0]&&o.choices[0].delta;
+        if(d&&d.content){ raw+=d.content; paint(); }
+      }
+    }
+    body.innerHTML=render(raw);
+    if(raw.trim()) history.push({role:"assistant",content:raw});
+    history=history.map(m=>Array.isArray(m.content)
+      ? {role:m.role,content:m.content.filter(p=>p.type==="text").map(p=>p.text).join("\n")+" [image seen earlier]"}
+      : m);
+    health();
+  }catch(err){
+    body.innerHTML=md("**She could not be reached.** "+err.message+
+      "\n\n- Is the `maya` process still running?\n- Try refreshing this page.");
+  }finally{
+    busy=false; $("#send").disabled=false;
+    const r=card.querySelector(".route"); if(r.textContent==="routing") r.textContent="answered";
+  }
+}
+
+function meta(card,o){
+  const r=o.x_route, mem=o.x_memory||{}, bar=card.querySelector(".meta");
+  bar.innerHTML='<span class="route">'+esc(r.label)+'</span>'
+    +'<span class="tag">'+esc(r.why)+'</span>'
+    +(o.x_tier?'<span class="tag">'+esc(o.x_tier)+'</span>':'');
+  if(mem.hits&&mem.hits.length){
+    const b=el('<button class="srcbtn">'+mem.hits.length+' remembered</button>');
+    bar.appendChild(b);
+    const p=el('<div class="sources" style="display:none">'+mem.hits.map(h=>
+      '<div class="src"><h4>'+esc(h.title)+'</h4><time>'+esc(h.date)+'</time><p>'+esc(h.text)+'</p></div>').join("")+'</div>');
+    bar.after(p);
+    b.onclick=()=>{const open=p.style.display!=="none"; p.style.display=open?"none":"";
+      b.textContent=(open?"":"hide ")+mem.hits.length+" remembered";};
+  }
+}
+
+/* ---- memory drawer ---- */
+$("#openMem").onclick=()=>{$("#memDrawer").classList.add("open");$("#memq").focus();};
+$("#memx").onclick=()=>$("#memDrawer").classList.remove("open");
+$("#memq").addEventListener("keydown",e=>{if(e.key==="Enter")memFind();});
+$("#memgo").onclick=memFind;
+document.querySelectorAll(".drawer").forEach(d=>d.onclick=e=>{if(e.target===d)d.classList.remove("open");});
+async function memFind(){
+  const q=$("#memq").value.trim(); if(!q)return;
+  $("#memres").innerHTML='<p class="note">looking through her memory</p>';
+  try{
+    const d=await (await fetch("/v1/memory/search",{method:"POST",headers:H,
+      body:JSON.stringify({query:q,k:8})})).json();
+    $("#memres").innerHTML=(d.results||[]).length
+      ? d.results.map(h=>'<div class="src"><h4>'+esc(h.title)+'</h4><time>'+esc(h.date)+
+        ' &middot; '+esc(h.role)+'</time><p>'+esc(h.text)+'</p></div>').join("")
+      : '<p class="note">nothing in her memory matches that</p>';
+  }catch(e){ $("#memres").innerHTML='<p class="note">search failed: '+esc(e.message)+'</p>'; }
+}
+</script>

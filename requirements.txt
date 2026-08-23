@@ -1,0 +1,34 @@
+# What Maya_OS actually needs. Two windows, two commands:
+#
+#   python server.py      the brain
+#   python agent.py       the chat
+#
+#   pip install -r requirements.txt
+
+# --- server.py ---------------------------------------------------------
+fastapi
+uvicorn
+requests        # was a hard, undeclared dependency before; now listed
+
+# --- agent.py ----------------------------------------------------------
+openai
+
+# --- Job Hunt OS (see DEPENDENCIES.md for what each one is and why) ----
+openpyxl        # writes JobHunt_Tracker.xlsx
+playwright      # headless-Chrome Discovery search. After installing, also
+                # run once on the HOST machine (never the build machine):
+                #   playwright install chromium
+
+# --- optional, and it says so at startup if missing ---------------------
+# numpy   makes vector search faster. There is a pure Python fallback, so
+#         without it search still works, just slower on a large archive.
+# pypdf   reads PDFs. Without it a PDF fails loudly by name rather than
+#         counting as an empty file. .docx needs nothing.
+#
+# numpy
+# pypdf
+
+# Deliberately absent: qwen-agent, fastmcp, mcp, langchain, pillow.
+# Nothing imports them. The old requirements.txt listed them and omitted
+# fastapi and uvicorn, so following it installed four things the project
+# does not use and none of what it needs.

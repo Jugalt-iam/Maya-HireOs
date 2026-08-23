@@ -1,0 +1,122 @@
+# providers.yaml
+#
+# The six free lanes, in failover order. One is active at a time. When a lane
+# is exhausted the next takes over. See ROUTING.md.
+#
+# Keys are NEVER written here. They come from environment variables named
+# below, loaded from .env, which is gitignored. See .env.example.
+#
+# Google AI Studio is excluded from this system by instruction. Do not add it.
+#
+# Read by homemath once _build_providers() supports N lanes. Until then it is
+# the specification the .env file is built from. See HOMEMATH-SPEC.md.
+
+version: 1
+
+defaults:
+  timeout_seconds: 60
+  reserve_fraction: 0.30      # batch stops at 70% of a daily quota
+  probe_timeout_seconds: 5
+
+# Failover order. First entry is tried first.
+lane_order:
+  - groq
+  - cerebras
+  - openrouter
+  - mistral
+  - local
+
+lanes:
+
+  groq:
+    base_url_env: GROQ_BASE_URL
+    api_key_env: GROQ_API_KEY
+    base_url_default: https://api.groq.com/openai/v1
+    sensitivity_clearance: work_only    # never repo code, credentials, personal files
+    task_classes: [score, reason, classify, extract]
+    notes: fast structured calls, large open weights
+    models:
+      judgment: null      # set to the largest model this lane offers
+      mechanical: null    # set to the fastest
+      default: null
+    limits:               # fill from the provider dashboard, corrected at runtime
+      rpm: null
+      rpd: null
+      tpm: null
+      tpd: null
+    reset_at: null        # UTC time of day, e.g. "00:00"
+
+  cerebras:
+    base_url_env: CEREBRAS_BASE_URL
+    api_key_env: CEREBRAS_API_KEY
+    base_url_default: https://api.cerebras.ai/v1
+    sensitivity_clearance: work_only
+    task_classes: [score, reason, classify, extract]
+    notes: second fast lane, different limit shape to groq
+    models: {judgment: null, mechanical: null, default: null}
+    limits: {rpm: null, rpd: null, tpm: null, tpd: null}
+    reset_at: null
+
+  openrouter:
+    base_url_env: OPENROUTER_BASE_URL
+    api_key_env: OPENROUTER_API_KEY
+    base_url_default: https://openrouter.ai/api/v1
+    sensitivity_clearance: work_only
+    task_classes: [reason, score, draft_internal]
+    notes: >
+      breadth and fallback, free-suffix models only. This is also the deep
+      reasoning lane. Judgment-class work picks the strongest free reasoning
+      model live at runtime rather than a pinned tag, because the free list
+      changes without notice.
+    free_models_only: true
+    models: {judgment: null, mechanical: null, default: null}
+    limits: {rpm: null, rpd: null, tpm: null, tpd: null}
+    reset_at: null
+
+  mistral:
+    base_url_env: MISTRAL_BASE_URL
+    api_key_env: MISTRAL_API_KEY
+    base_url_default: https://api.mistral.ai/v1
+    sensitivity_clearance: work_only
+    task_classes: [draft_internal, classify, extract]
+    notes: general lane, mid-depth tasks
+    models: {judgment: null, mechanical: null, default: null}
+    limits: {rpm: null, rpd: null, tpm: null, tpd: null}
+    reset_at: null
+
+
+
+  # Tier 1. The floor. Always available, never rate limited, never leaves the
+  # machine. Mechanical work falls here when every lane is out. Judgment work
+  # does NOT: it queues instead. See ROUTING.md.
+  local:
+    base_url_env: LLM_HOST
+    api_key_env: null
+    base_url_default: http://127.0.0.1:11434
+    sensitivity_clearance: everything
+    task_classes: [extract, classify, recall]
+    notes: qwen3.5 through Ollama, reads and reports, writes no new prose
+    models: {judgment: null, mechanical: null, default: qwen3.5:4b-q4_K_M}
+    limits: {rpm: null, rpd: null, tpm: null, tpd: null}
+    reset_at: null
+
+# Task class to tier and budget. homemath owns the budgets; this records the
+# tier each class belongs to so ROUTING.md and the code cannot drift apart.
+task_classes:
+  extract:        {tier: 1, homemath_class: SIMPLE,      max_tokens: 512}
+  classify:       {tier: 1, homemath_class: SIMPLE,      max_tokens: 512}
+  recall:         {tier: 1, homemath_class: DOMAIN,      max_tokens: 2048}
+  score:          {tier: 2, homemath_class: JUDGE,       max_tokens: 4096}
+  reason:         {tier: 2, homemath_class: ANALYSIS,    max_tokens: 4096}
+  draft_internal: {tier: 2, homemath_class: CONTENT_GEN, max_tokens: 4096}
+  consolidate:    {tier: 2, homemath_class: STRATEGY,    max_tokens: 4096}
+
+# Maya_OS mode to task class. The mode router already decides the mode; this
+# is the single mapping between the two vocabularies so neither guesses.
+mode_map:
+  recall:   recall
+  smb:      recall
+  teardown: extract        # local vision reads the image, analysis follows
+  copy:     draft_internal
+  campaign: consolidate
+  think:    reason

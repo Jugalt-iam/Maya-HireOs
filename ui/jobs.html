@@ -1,0 +1,591 @@
+<!--
+  maya_os/ui/jobs.html  --  Job Hunt OS dashboard.
+
+  One file, same posture as ui/index.html: no build step, no CDN, no font
+  request. Second page rather than a 14-section addition to the chat page,
+  so neither file becomes unmanageable. Same origin, same bearer key.
+-->
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Job Hunt OS</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='7' fill='%23C61B48'/%3E%3C/svg%3E">
+
+<style>
+:root{
+  --ground:#0A0909; --pearl:#FDFCF8;
+  --rose:#C61B48; --rose-gold:#E5B1AB; --slate:#708090;
+  --ok:#4ade80; --warn:#fbbf24; --fail:#f87171; --info:#a78bfa;
+  --sans:'Manrope',system-ui,-apple-system,sans-serif;
+  --serif:'Playfair Display',Georgia,serif;
+  --mono:'Space Mono','SF Mono',ui-monospace,monospace;
+  --expo:cubic-bezier(.16,1,.3,1);
+  --glass:rgba(253,252,248,.02); --hair:rgba(229,177,171,.08);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--ground); color:var(--pearl); font-family:var(--sans);
+  font-size:14.5px; line-height:1.6; -webkit-font-smoothing:antialiased}
+a{color:inherit}
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-thumb{background:var(--hair); border-radius:8px}
+
+#shell{display:grid; grid-template-columns:220px 1fr; height:100vh}
+
+nav{border-right:1px solid var(--hair); padding:22px 14px; overflow-y:auto}
+.mark{font-family:var(--serif); font-style:italic; font-size:19px; margin-bottom:4px}
+.mark b{color:var(--rose); font-style:normal; font-weight:700}
+.sub{font-family:var(--mono); font-size:10px; letter-spacing:.15em; color:var(--rose-gold);
+  opacity:.6; text-transform:uppercase; margin-bottom:22px}
+.navlink{display:block; padding:9px 10px; border-radius:9px; color:var(--rose-gold);
+  opacity:.75; text-decoration:none; font-size:13.5px; cursor:pointer; transition:.2s}
+.navlink:hover{opacity:1; background:var(--glass)}
+.navlink.active{background:var(--glass); color:var(--pearl); opacity:1;
+  border:1px solid var(--hair)}
+.navlink .n{float:right; font-family:var(--mono); font-size:10.5px; color:var(--rose);
+  opacity:.8}
+.backlink{display:block; margin-top:18px; padding-top:14px; border-top:1px solid var(--hair);
+  font-family:var(--mono); font-size:11px; color:var(--rose-gold); opacity:.55;
+  text-decoration:none}
+
+main{overflow-y:auto; padding:26px 34px}
+header.top{display:flex; align-items:center; justify-content:space-between; margin-bottom:22px}
+h1{font-family:var(--serif); font-size:24px; font-weight:400}
+.status{font-family:var(--mono); font-size:11px; color:var(--rose-gold); opacity:.6}
+
+.grid{display:grid; gap:12px; grid-template-columns:repeat(auto-fit,minmax(230px,1fr))}
+.stat{border:1px solid var(--hair); background:var(--glass); border-radius:14px; padding:16px}
+.stat .num{font-family:var(--serif); font-size:30px}
+.stat .label{font-size:11.5px; color:var(--rose-gold); opacity:.6; text-transform:uppercase;
+  letter-spacing:.08em; margin-top:4px}
+.stat.hot{border-color:rgba(198,27,72,.4)}
+.stat.hot .num{color:var(--rose)}
+
+.section-title{font-family:var(--mono); font-size:11px; letter-spacing:.15em;
+  text-transform:uppercase; color:var(--rose); margin:26px 0 12px; opacity:.85}
+.section-title:first-of-type{margin-top:4px}
+
+.card{border:1px solid var(--hair); background:var(--glass); border-radius:14px;
+  padding:15px 17px; margin-bottom:10px}
+.card .row1{display:flex; justify-content:space-between; align-items:baseline; gap:10px}
+.card h3{font-size:14.5px; font-weight:600}
+.card .meta{font-family:var(--mono); font-size:11px; color:var(--rose-gold); opacity:.55}
+.card p{font-size:13px; color:var(--rose-gold); opacity:.7; margin-top:6px}
+.card .tags{margin-top:8px; display:flex; gap:6px; flex-wrap:wrap}
+.tag{font-family:var(--mono); font-size:10px; padding:2px 8px; border-radius:999px;
+  border:1px solid var(--hair); color:var(--rose-gold)}
+.tag.score{color:var(--ground); background:var(--ok); border:none; font-weight:700}
+.tag.score.mid{background:var(--warn)}
+.tag.score.low{background:var(--fail)}
+.tag.status{color:var(--info)}
+
+.empty{color:var(--rose-gold); opacity:.4; font-size:13px; padding:18px 0}
+.actions{display:flex; gap:8px; margin-bottom:18px; flex-wrap:wrap}
+.btn{border:1px solid var(--hair); background:var(--glass); color:var(--pearl);
+  padding:9px 14px; border-radius:9px; font-family:var(--sans); font-size:13px;
+  cursor:pointer; transition:.2s}
+.btn:hover{border-color:rgba(198,27,72,.45); color:var(--rose)}
+.btn:disabled{opacity:.4; cursor:default}
+.field{width:100%; background:var(--glass); border:1px solid var(--hair); color:var(--pearl);
+  border-radius:9px; padding:9px 11px; font-family:var(--sans); font-size:13px; margin-bottom:8px}
+textarea.field{min-height:80px; resize:vertical}
+.formgrid{display:grid; gap:8px; grid-template-columns:1fr 1fr; max-width:640px}
+
+table{width:100%; border-collapse:collapse; font-size:12.5px}
+th{text-align:left; font-family:var(--mono); font-size:10.5px; text-transform:uppercase;
+  letter-spacing:.06em; color:var(--rose-gold); opacity:.55; padding:8px 10px;
+  border-bottom:1px solid var(--hair)}
+td{padding:9px 10px; border-bottom:1px solid var(--hair); color:var(--rose-gold)}
+tr:hover td{color:var(--pearl)}
+
+pre.raw{white-space:pre-wrap; font-family:var(--mono); font-size:12px; color:var(--rose-gold);
+  background:var(--glass); border:1px solid var(--hair); border-radius:10px; padding:14px;
+  max-height:420px; overflow-y:auto}
+</style>
+
+<div id="shell">
+  <nav>
+    <div class="mark">Job Hunt <b>OS</b></div>
+    <div class="sub">Maya, extended</div>
+    <div id="navlinks"></div>
+    <a class="backlink" href="/ui">&larr; back to chat</a>
+  </nav>
+  <main>
+    <header class="top">
+      <h1 id="pageTitle">Overview</h1>
+      <span class="status" id="statusLine">loading...</span>
+    </header>
+    <div id="content"></div>
+  </main>
+</div>
+
+<script>
+const KEY = "__API_KEY__";
+const H = {"Content-Type":"application/json","Authorization":"Bearer "+KEY};
+
+const SECTIONS = [
+  ["overview","Overview"], ["discovery","Discovery"], ["jobs","Jobs"],
+  ["fit","Fit Check"], ["companies","Companies"], ["applications","Applications"],
+  ["outreach","Outreach"], ["conversations","Conversations"], ["tasks","Tasks"],
+  ["daily","Daily Update"], ["resume","Resume"], ["roles","Role Library"],
+  ["tracker","Tracker"], ["settings","Settings"],
+];
+
+const $ = s => document.querySelector(s);
+const el = (tag, cls, html) => { const e = document.createElement(tag);
+  if (cls) e.className = cls; if (html !== undefined) e.innerHTML = html; return e; };
+
+async function api(path, opts) {
+  const res = await fetch(path, Object.assign({headers: H}, opts || {}));
+  let body = null;
+  try { body = await res.json(); } catch (e) {}
+  return {ok: res.ok, status: res.status, body};
+}
+
+// Runs a repeatable action (tailor resume, run discovery, ...) against a
+// results log rather than a single output slot: each run PREPENDS its
+// result above prior ones instead of replacing them, so history is never
+// lost by clicking the button again. A per-key token also discards any
+// response that resolves after a newer click already fired for the same
+// button -- without this, a slow first request finishing after a fast
+// second one would silently overwrite the newer, correct result with a
+// stale one, which is exactly the "answer changed" / "overlapping answers"
+// symptom this fixes.
+const _actionTokens = {};
+async function runGuarded(key, btn, logEl, task) {
+  const token = (_actionTokens[key] = (_actionTokens[key] || 0) + 1);
+  const wasDisabled = btn.disabled;
+  btn.disabled = true;
+  const pending = el("div", "empty", "working...");
+  logEl.prepend(pending);
+  try {
+    const html = await task();
+    if (_actionTokens[key] !== token) { pending.remove(); return; } // superseded, drop silently
+    pending.remove();
+    const stamp = new Date().toLocaleTimeString();
+    logEl.prepend(el("div", "card", `<div class="meta">${stamp}</div>${html}`));
+  } catch (e) {
+    if (_actionTokens[key] !== token) { pending.remove(); return; }
+    pending.className = "card";
+    pending.innerHTML = `<h3>Failed</h3><p>${escapeHtml(String(e))}</p>`;
+  } finally {
+    if (_actionTokens[key] === token) btn.disabled = wasDisabled;
+  }
+}
+
+function fitTag(score) {
+  if (score === null || score === undefined) return "";
+  const cls = score >= 90 ? "score" : score >= 70 ? "score mid" : "score low";
+  return `<span class="tag ${cls}">${score}</span>`;
+}
+
+function opportunityCard(o) {
+  const badges = [];
+  if (o.ready_to_apply) badges.push(`<span class="tag score">80%+ match</span>`);
+  if (o.apply_soon) badges.push(`<span class="tag" style="color:var(--warn);border-color:var(--warn)">posted recently</span>`);
+  return `<div class="card">
+    <div class="row1">
+      <h3>${o.role || o.job_title || o.job_id || "role"} <span class="meta">@ ${o.company || o.company_name || o.company_id || ""}</span></h3>
+      ${fitTag(o.fit_score)}
+    </div>
+    <p>${o.next_action || "no next action set"} ${o.next_action_date ? "&middot; due " + o.next_action_date : ""}</p>
+    <div class="tags">
+      <span class="tag status">${o.status}</span>
+      <span class="tag">${o.route}</span>
+      ${badges.join("")}
+      ${jobLinkTag(o.official_url || o.job_official_url, o.job_source_url)}
+    </div>
+  </div>`;
+}
+
+// A verified official_url renders as a plain, trusted link. Anything else
+// falls back to whatever source link was captured (e.g. from a bulk
+// import whose only link was a search-results page, never a specific
+// posting) -- shown, but visibly labeled unverified rather than presented
+// the same way a confirmed ATS/company-site link is. Neither link existing
+// renders nothing, same as before.
+function jobLinkTag(officialUrl, sourceUrl) {
+  if (officialUrl) return `<a class="tag" href="${officialUrl}" target="_blank">official listing</a>`;
+  if (sourceUrl) return `<a class="tag" href="${sourceUrl}" target="_blank" style="color:var(--warn);border-color:var(--warn)">unverified link</a>`;
+  return "";
+}
+
+function contactCard(c) {
+  return `<div class="card">
+    <div class="row1"><h3>${escapeHtml(c.name)}</h3><span class="tag">${escapeHtml(c.relationship || "")}</span></div>
+    <p>Last contact ${c.last_contact || "unknown"}
+      ${c.next_followup ? "&middot; next follow-up due " + c.next_followup : "&middot; no follow-up scheduled"}</p>
+  </div>`;
+}
+
+async function renderOverview() {
+  const [daily, opps] = await Promise.all([
+    api("/v1/jobhunt/daily"), api("/v1/jobhunt/opportunities?min_fit=90"),
+  ]);
+  if (!daily.ok) return errorBlock(daily);
+  const d = daily.body.sections;
+  const stats = [
+    ["New discoveries today", d.new_discoveries.length],
+    ["Qualified", d.new_qualified_jobs.length],
+    ["90%+ matches", (opps.body || {}).count || 0, true],
+    ["Applications ready", d.applications_to_make.length],
+    ["Outreach pending", d.outreach_to_send.length],
+    ["Follow-ups due", d.followups_due.length],
+    ["Conversations active", 0],
+    ["Interviews", d.interviews.length],
+    ["Stale opportunities", d.stale_opportunities.length],
+  ];
+  let html = `<div class="grid">` + stats.map(([label, num, hot]) =>
+    `<div class="stat ${hot ? "hot" : ""}"><div class="num">${num}</div><div class="label">${label}</div></div>`
+  ).join("") + `</div>`;
+  html += `<div class="section-title">90%+ opportunities, immediately visible</div>`;
+  const hot = (opps.body || {}).results || [];
+  html += hot.length ? hot.map(opportunityCard).join("") : `<div class="empty">nothing at 90%+ yet</div>`;
+  $("#content").innerHTML = html;
+}
+
+async function renderDiscovery() {
+  $("#content").innerHTML = `
+    <div class="actions">
+      <button class="btn" id="genRoles">Generate role permutations from profile</button>
+      <button class="btn" id="runDiscovery">Run discovery</button>
+    </div>
+    <div class="section-title">Run history (newest first)</div>
+    <div id="discoveryOut"></div>`;
+  const out = $("#discoveryOut");
+  $("#genRoles").onclick = () => runGuarded("genRoles", $("#genRoles"), out, async () => {
+    const r = await api("/v1/jobhunt/roles/generate", {method:"POST", body: JSON.stringify({})});
+    return `<h3>Generate role permutations</h3><pre class="raw">${escapeHtml(JSON.stringify(r.body, null, 2))}</pre>`;
+  });
+  $("#runDiscovery").onclick = () => runGuarded("runDiscovery", $("#runDiscovery"), out, async () => {
+    const r = await api("/v1/jobhunt/discovery/run", {method:"POST", body: JSON.stringify({})});
+    return `<h3>Discovery run</h3><pre class="raw">${escapeHtml(JSON.stringify(r.body, null, 2))}</pre>`;
+  });
+}
+
+async function renderJobs() {
+  const r = await api("/v1/jobhunt/jobs");
+  if (!r.ok) return errorBlock(r);
+  const rows = (r.body.results || []).map(j => `<tr>
+    <td>${j.title}</td><td>${j.location || ""}</td><td>${j.source_type || ""}</td>
+    <td>${j.posted_at || "unknown"}</td><td>${j.date_confidence || ""}</td>
+    <td>${j.status}</td><td>${jobLinkTag(j.official_url, j.source_url)}</td>
+  </tr>`).join("");
+  $("#content").innerHTML = `<table><thead><tr>
+    <th>Title</th><th>Location</th><th>Source</th><th>Posted</th><th>Confidence</th><th>Status</th><th>Link</th>
+  </tr></thead><tbody>${rows || `<tr><td colspan="7" class="empty">no jobs yet</td></tr>`}</tbody></table>`;
+}
+
+async function renderFit() {
+  const r = await api("/v1/jobhunt/opportunities");
+  if (!r.ok) return errorBlock(r);
+  const all = r.body.results || [];
+  const scored = all.filter(o => o.fit_score !== null && o.fit_score !== undefined);
+  const ungraded = all.filter(o => o.fit_score === null || o.fit_score === undefined);
+
+  $("#content").innerHTML = `
+    <div class="actions">
+      <button class="btn" id="fitAllBtn">Open each link, fit check, and build a resume -- all ungraded (${ungraded.length})</button>
+    </div>
+    <p style="color:var(--rose-gold);opacity:.7;max-width:60ch">
+      For each one: opens its own link if it doesn't have a description on file yet,
+      runs a real fit check, and -- if a master resume exists -- builds a real tailored
+      resume against it. A link that's only a search-results page (not a specific
+      posting) will honestly fail here with that exact reason, not a fabricated score.
+      This can take a while for a large batch -- it's one real network fetch and lane
+      call per item, same as running Discovery.</p>
+    <div id="fitAllOut"></div>
+    <div class="section-title">Not yet checked (${ungraded.length})</div>
+    <div id="ungradedList"></div>
+    <div class="section-title">Already checked (${scored.length})</div>
+    ${scored.length ? scored.map(o => `<div class="card">
+        <div class="row1"><h3>${o.role || o.job_title || o.job_id}<span class="meta"> @ ${o.company || o.company_name || ""}</span></h3>${fitTag(o.fit_score)}</div>
+        <p>${o.fit_status || ""}</p>
+      </div>`).join("") : `<div class="empty">none yet</div>`}`;
+
+  const ungradedList = $("#ungradedList");
+  ungradedList.innerHTML = ungraded.length ? ungraded.map(o => `<div class="card" data-opp="${o.opportunity_id}">
+      <div class="row1"><h3>${o.role || o.job_title || o.job_id}<span class="meta"> @ ${o.company || o.company_name || ""}</span></h3></div>
+      <textarea class="field jd-paste" placeholder="paste the job description here if none is stored yet (optional -- tries the stored one first)"></textarea>
+      <button class="btn fit-one-btn">Run fit check</button>
+      <div class="fit-one-out"></div>
+    </div>`).join("") : `<div class="empty">nothing ungraded</div>`;
+
+  ungradedList.querySelectorAll(".card").forEach(card => {
+    const oppId = card.dataset.opp;
+    const btn = card.querySelector(".fit-one-btn");
+    const out = card.querySelector(".fit-one-out");
+    const jdField = card.querySelector(".jd-paste");
+    btn.onclick = () => runGuarded("fit-" + oppId, btn, out, async () => {
+      const body = {opportunity_id: oppId};
+      if (jdField.value.trim()) body.job_description = jdField.value.trim();
+      const res = await api("/v1/jobhunt/fit/check", {method: "POST", body: JSON.stringify(body)});
+      if (!res.ok) {
+        return `<p style="color:var(--warn)">${escapeHtml((res.body && (res.body.error || res.body.message)) || ("HTTP " + res.status))}</p>`;
+      }
+      return `<p>${fitTag(res.body.score)} ${escapeHtml(res.body.category || "")}</p>
+        <p>${escapeHtml((res.body.narrative || "").slice(0, 400))}</p>`;
+    });
+  });
+
+  $("#fitAllBtn").onclick = () => runGuarded("fitAll", $("#fitAllBtn"), $("#fitAllOut"), async () => {
+    const res = await api("/v1/jobhunt/pipeline/run-all", {method: "POST", body: JSON.stringify({
+      opportunity_ids: ungraded.map(o => o.opportunity_id),
+    })});
+    if (!res.ok) {
+      return `<h3>Could not run</h3><p>${escapeHtml((res.body && res.body.error) || "unknown error")}</p>`;
+    }
+    const b = res.body;
+    const lines = (b.results || []).map(r => {
+      const label = escapeHtml(r.title || r.opportunity_id);
+      if (r.ok && r.fit) {
+        const resumeNote = r.resume_version_id ? " -- tailored resume built"
+          : ` -- resume not built (${escapeHtml(r.resume_error || "unknown reason")})`;
+        return `<p>${label}: ${fitTag(r.fit.score)} ${escapeHtml(r.fit.category || "")}${resumeNote}</p>`;
+      }
+      if (r.ok) {
+        return `<p>${label}: <span style="color:var(--warn)">fit check failed -- ${escapeHtml(r.fit_error || "unknown reason")}</span></p>`;
+      }
+      return `<p>${label}: <span style="color:var(--warn)">${escapeHtml(r.error || "could not process")}</span></p>`;
+    });
+    const masterNote = b.no_master_resume
+      ? `<p style="color:var(--warn)">No master resume on file -- fit scores ran, but no resumes were built. Place one at MyData/jobhunt/resumes/master.md and run this again.</p>` : "";
+    return `<h3>Processed ${b.processed}: ${b.fit_checked} fit-checked, ${b.resumes_built} resumes built, ${b.could_not_extract} could not be opened</h3>
+      ${masterNote}${lines.join("")}`;
+  });
+}
+
+async function renderCompanies() {
+  $("#content").innerHTML = `
+    <div class="actions">
+      <button class="btn" id="targetFilterBtn">Show My 20 only</button>
+      <button class="btn" id="findEngagementBtn">Find LinkedIn posts to comment on</button>
+    </div>
+    <div id="engagementOut"></div>
+    <div id="companiesList"></div>`;
+  let targetOnly = false;
+  const list = $("#companiesList");
+  const engOut = $("#engagementOut");
+
+  async function load() {
+    const r = await api("/v1/jobhunt/companies" + (targetOnly ? "?target=1" : ""));
+    if (!r.ok) return errorBlock(r);
+    list.innerHTML = (r.body.results || []).map(c => `<div class="card">
+      <div class="row1">
+        <h3>${escapeHtml(c.name)}</h3>
+        ${c.target_priority ? `<span class="tag score">${c.target_priority} target</span>` : ""}
+      </div>
+      <p>${c.research ? escapeHtml(c.research.slice(0, 220)) + "..." : "no research yet"}</p>
+      <div class="tags">
+        ${c.research_date ? `<span class="tag">researched ${c.research_date.slice(0,10)}</span>` : `<span class="tag status">RESEARCH_PENDING</span>`}
+        <button class="btn target-toggle" data-id="${c.company_id}" data-current="${c.target_priority || ""}">
+          ${c.target_priority ? "Remove from My 20" : "Add to My 20"}
+        </button>
+      </div>
+    </div>`).join("") || `<div class="empty">${targetOnly ? "no companies in My 20 yet" : "no companies yet"}</div>`;
+    list.querySelectorAll(".target-toggle").forEach(btn => {
+      btn.onclick = async () => {
+        const isTarget = !!btn.dataset.current;
+        btn.disabled = true;
+        await api(`/v1/jobhunt/companies/${btn.dataset.id}/target`, {
+          method: "POST", body: JSON.stringify(isTarget ? {} : {target_priority: "P1"}),
+        });
+        load();
+      };
+    });
+  }
+
+  $("#targetFilterBtn").onclick = () => {
+    targetOnly = !targetOnly;
+    $("#targetFilterBtn").textContent = targetOnly ? "Show all companies" : "Show My 20 only";
+    load();
+  };
+
+  $("#findEngagementBtn").onclick = () => runGuarded("findEngagement", $("#findEngagementBtn"), engOut, async () => {
+    const r = await api("/v1/jobhunt/engagement/find", {method: "POST", body: JSON.stringify({})});
+    if (!r.ok) return `<h3>Could not run</h3><p>${escapeHtml((r.body && r.body.error) || "unknown error")}</p>`;
+    const candidates = r.body.candidates || [];
+    const states = r.body.states || {};
+    const stateLines = Object.entries(states).map(([name, state]) => `${name}: ${state}`).join(" &middot; ");
+    if (!candidates.length) {
+      return `<h3>No candidates found</h3><p class="meta">${escapeHtml(stateLines)}</p>
+        <p style="margin-top:8px">LinkedIn's own robots.txt commonly blocks this kind of search --
+        that shows up above as SEARCH_BLOCKED, an expected outcome, not a bug.</p>`;
+    }
+    return `<h3>${candidates.length} post${candidates.length === 1 ? "" : "s"} found</h3>
+      <p class="meta">${escapeHtml(stateLines)}</p>
+      ${candidates.map(c => `<p><a href="${c.url}" target="_blank">${escapeHtml(c.title || c.url)}</a>
+        <span class="meta">&middot; ${escapeHtml(c.company)}</span></p>`).join("")}
+      <p style="margin-top:8px;opacity:.6">Nothing is posted automatically -- open a link and comment yourself if it's worth it.</p>`;
+  });
+
+  await load();
+}
+
+async function renderApplications() {
+  const r = await api("/v1/jobhunt/opportunities");
+  if (!r.ok) return errorBlock(r);
+  const apps = (r.body.results || []).filter(o => o.application_status);
+  $("#content").innerHTML = apps.length ? apps.map(opportunityCard).join("") :
+    `<div class="empty">nothing application-ready yet</div>`;
+}
+
+async function renderOutreach() {
+  const r = await api("/v1/jobhunt/opportunities?status=OUTREACH_PENDING");
+  if (!r.ok) return errorBlock(r);
+  $("#content").innerHTML = (r.body.results || []).map(opportunityCard).join("") ||
+    `<div class="empty">no outreach pending</div>`;
+}
+
+async function renderConversations() {
+  const r = await api("/v1/jobhunt/opportunities");
+  if (!r.ok) return errorBlock(r);
+  const withConv = (r.body.results || []).filter(o => o.conversation_status === "ACTIVE");
+  $("#content").innerHTML = withConv.length ? withConv.map(opportunityCard).join("") :
+    `<div class="empty">no active conversations</div>`;
+}
+
+async function renderTasks() {
+  const r = await api("/v1/jobhunt/daily");
+  if (!r.ok) return errorBlock(r);
+  const tasks = r.body.sections.overdue_tasks || [];
+  $("#content").innerHTML = tasks.length ? `<table><thead><tr><th>Title</th><th>Due</th><th>Status</th></tr></thead><tbody>` +
+    tasks.map(t => `<tr><td>${t.title}</td><td>${t.due_date || ""}</td><td>${t.status}</td></tr>`).join("") +
+    `</tbody></table>` : `<div class="empty">nothing overdue</div>`;
+}
+
+async function renderDaily() {
+  const r = await api("/v1/jobhunt/daily");
+  if (!r.ok) return errorBlock(r);
+  const a = r.body.answers;
+  const s = r.body.sections;
+  $("#content").innerHTML = `
+    <div class="section-title">What changed</div>
+    <pre class="raw">${escapeHtml(JSON.stringify(a.what_changed, null, 2))}</pre>
+    <div class="section-title">Needs action today</div>
+    ${(a.what_needs_action_today || []).map(opportunityCard).join("") || `<div class="empty">nothing due today</div>`}
+    <div class="section-title">High priority to apply (80%+ match, or posted in the last 2 days)</div>
+    ${(s.high_priority_to_apply || []).map(opportunityCard).join("") || `<div class="empty">nothing crosses the threshold right now</div>`}
+    <div class="section-title">Warm intro follow-ups</div>
+    ${(s.warm_intro_followups || []).map(contactCard).join("") || `<div class="empty">nothing due</div>`}
+    <div class="section-title">Overdue</div>
+    <pre class="raw">${escapeHtml(JSON.stringify(a.what_is_overdue, null, 2))}</pre>
+    <div class="section-title">Highest priority</div>
+    ${a.highest_priority ? opportunityCard(a.highest_priority) : `<div class="empty">nothing ranked yet</div>`}`;
+}
+
+async function renderResume() {
+  $("#content").innerHTML = `
+    <div class="section-title">Tailor for a role</div>
+    <div class="formgrid">
+      <input class="field" id="oppId" placeholder="opportunity_id (optional)">
+      <input class="field" id="jobId" placeholder="job_id (optional)">
+    </div>
+    <textarea class="field" id="jdText" placeholder="job description (if not already stored)"></textarea>
+    <button class="btn" id="tailorBtn">Tailor resume</button>
+    <div class="section-title">History (newest first)</div>
+    <div id="resumeOut"></div>`;
+  const out = $("#resumeOut");
+  $("#tailorBtn").onclick = () => runGuarded("tailorBtn", $("#tailorBtn"), out, async () => {
+    const r = await api("/v1/jobhunt/resume/tailor", {method:"POST", body: JSON.stringify({
+      opportunity_id: $("#oppId").value, job_id: $("#jobId").value, job_description: $("#jdText").value,
+    })});
+    if (r.body && r.body.flagged_additions && r.body.flagged_additions.length) {
+      return `<h3 style="color:var(--warn)">Review before using -- possible fabrication</h3>
+        <p>${r.body.flagged_additions.map(escapeHtml).join("<br>")}</p>
+        <pre class="raw">${escapeHtml(r.body.content || "")}</pre>`;
+    }
+    return `<h3>Tailored resume</h3>
+      <pre class="raw">${escapeHtml((r.body && r.body.content) || JSON.stringify(r.body))}</pre>`;
+  });
+}
+
+async function renderRoles() {
+  const r = await api("/v1/jobhunt/roles");
+  if (!r.ok) return errorBlock(r);
+  const rows = r.body.results || [];
+  $("#content").innerHTML = rows.length ? `<table><thead><tr>
+    <th>Sheet</th><th>Designation</th><th>Seniority</th><th>Priority</th><th>Include</th>
+  </tr></thead><tbody>` + rows.map(p => `<tr>
+    <td>${p.sheet}</td><td>${p.designation || p.canonical_role || ""}</td>
+    <td>${p.seniority || ""}</td><td>${p.search_priority || ""}</td><td>${p.include_exclude || ""}</td>
+  </tr>`).join("") + `</tbody></table>` :
+    `<div class="empty">no role permutations generated yet -- see Discovery</div>`;
+}
+
+async function renderTracker() {
+  $("#content").innerHTML = `
+    <div class="actions">
+      <a class="btn" href="/v1/jobhunt/tracker/export">Download JobHunt_Tracker.xlsx</a>
+    </div>
+    <p style="color:var(--rose-gold);opacity:.7;max-width:60ch">
+      Regenerated fresh from the database every time, one-way. Hand-editing the
+      workbook and re-importing only validates and reports differences --
+      it never writes back automatically (two-way sync is a stated v2 stretch,
+      not this pass).</p>`;
+}
+
+async function renderSettings() {
+  const r = await api("/health");
+  if (!r.ok) return errorBlock(r);
+  const jh = r.body.jobhunt || {};
+  $("#content").innerHTML = `
+    <div class="section-title">Job hunt database</div>
+    <pre class="raw">${escapeHtml(JSON.stringify(jh, null, 2))}</pre>
+    <div class="section-title">Lanes (judgment work)</div>
+    <pre class="raw">${escapeHtml(JSON.stringify(r.body.routing.lanes, null, 2))}</pre>
+    <div class="section-title">Fixed settings</div>
+    <pre class="raw">MAX_JOB_AGE_DAYS = 7 (configurable server-side)
+FIT_QUALIFY_THRESHOLD = 90 (configurable server-side)
+Search: headless Chrome primary, ATS feeds (Greenhouse/Lever/Ashby) secondary
+        enrichment, no paid search API required for core operation.</pre>`;
+}
+
+function errorBlock(r) {
+  $("#content").innerHTML = `<div class="card"><h3>Unavailable</h3>
+    <p>${escapeHtml((r.body && (r.body.error || r.body.message)) || ("HTTP " + r.status))}</p></div>`;
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+
+const RENDERERS = {
+  overview: renderOverview, discovery: renderDiscovery, jobs: renderJobs,
+  fit: renderFit, companies: renderCompanies, applications: renderApplications,
+  outreach: renderOutreach, conversations: renderConversations, tasks: renderTasks,
+  daily: renderDaily, resume: renderResume, roles: renderRoles,
+  tracker: renderTracker, settings: renderSettings,
+};
+
+function buildNav() {
+  const nav = $("#navlinks");
+  nav.innerHTML = "";
+  SECTIONS.forEach(([id, label]) => {
+    const a = el("a", "navlink", label);
+    a.dataset.id = id;
+    a.onclick = () => go(id);
+    nav.appendChild(a);
+  });
+}
+
+async function go(id) {
+  location.hash = id;
+  document.querySelectorAll(".navlink").forEach(a =>
+    a.classList.toggle("active", a.dataset.id === id));
+  const label = (SECTIONS.find(s => s[0] === id) || [, id])[1];
+  $("#pageTitle").textContent = label;
+  $("#content").innerHTML = `<div class="empty">loading...</div>`;
+  try { await RENDERERS[id](); } catch (e) { errorBlock({status:"?", body:{error:String(e)}}); }
+}
+
+async function boot() {
+  buildNav();
+  try {
+    const h = await (await fetch("/health", {headers:H})).json();
+    $("#statusLine").textContent = h.jobhunt && h.jobhunt.ready ? "job hunt db connected" : "job hunt db unavailable";
+  } catch (e) { $("#statusLine").textContent = "brain unreachable"; }
+  const initial = (location.hash || "#overview").slice(1);
+  go(SECTIONS.some(s => s[0] === initial) ? initial : "overview");
+}
+boot();
+</script>

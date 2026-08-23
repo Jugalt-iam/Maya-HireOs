@@ -1,0 +1,33 @@
+# Real data and secrets -- never committed, ever.
+MyData/
+.env
+.maya_api_key
+logs/
+.claude_index/
+.lanes/
+*.log
+
+# Job Hunt runtime state that lives under MyData/ already, listed again in
+# case a path ever gets created outside it during development.
+jobhunt.db
+jobhunt.db-journal
+jobhunt.db-wal
+jobhunt.db-shm
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+
+# Local dev tooling that shouldn't ship in the template
+.claude/launch.json
