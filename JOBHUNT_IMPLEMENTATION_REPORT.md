@@ -1,9 +1,9 @@
 # Job Hunt OS — Implementation Report
 
-Built on top of the existing Maya_OS architecture, per the approved plan at
-`/Users/mistertj/.claude/plans/validated-painting-eclipse.md`. Nothing in
-`lanes.py`, the chat UI, or the existing `fit`/`research`/`copy`/`campaign`
-modes was rewritten — all new work is additive.
+Built on top of the existing Maya_OS architecture, per the approved plan.
+Nothing in `lanes.py`, the chat UI, or the existing
+`fit`/`research`/`copy`/`campaign` modes was rewritten — all new work is
+additive.
 
 ## What was implemented
 
