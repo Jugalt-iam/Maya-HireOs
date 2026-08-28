@@ -707,13 +707,95 @@ def list_opportunities(conn: sqlite3.Connection, status: Optional[str] = None,
     return [dict(r) for r in rows]
 
 
+# Main pipeline order for the DISCOVERY route. Adjacent moves (either
+# direction -- corrections happen) are always allowed. Index is used only
+# to compute adjacency; it is not itself stored anywhere.
+_PIPELINE = (
+    "DISCOVERED", "VERIFIED", "FIT_CHECK", "QUALIFIED", "RESUME_READY",
+    "APPLICATION_READY", "APPLIED", "OUTREACH_PENDING", "OUTREACH_SENT",
+    "REPLIED", "CONVERSATION", "INTERVIEW", "OFFER",
+)
+_PIPELINE_INDEX = {s: i for i, s in enumerate(_PIPELINE)}
+
+# Reachable from any active status, in addition to the adjacent pipeline
+# step: a role can end or pause at any stage, that is not a data-entry bug.
+_EXIT_STATUSES = {"REJECTED", "WITHDRAWN", "CLOSED", "NO_ACTION"}
+_PAUSE_STATUS = "FOLLOW_UP"
+
+
+def _pipeline_adjacent(status: str) -> set:
+    """Adjacent pipeline steps either direction from a pipeline status."""
+    allowed = set()
+    i = _PIPELINE_INDEX[status]
+    if i > 0:
+        allowed.add(_PIPELINE[i - 1])
+    if i < len(_PIPELINE) - 1:
+        allowed.add(_PIPELINE[i + 1])
+    return allowed
+
+
+def _last_pipeline_anchor(conn: sqlite3.Connection, opportunity_id: str
+                          ) -> Optional[str]:
+    """The most recent pipeline stage this opportunity actually occupied,
+    read from status_history. Used to bound where a FOLLOW_UP/exit status
+    is allowed to resume to -- pausing or exiting does not erase how far
+    along the pipeline the opportunity was."""
+    # Ordered by history_id, not `at` -- history_id is an atomically
+    # incrementing zero-padded sequence (HIST-000001, ...) and so sorts
+    # reliably even when two transitions share the same `at` timestamp,
+    # which plain string timestamp ordering does not guarantee.
+    rows = conn.execute(
+        "SELECT to_status FROM status_history WHERE opportunity_id = ? "
+        "ORDER BY history_id DESC", (opportunity_id,)).fetchall()
+    for r in rows:
+        if r["to_status"] in _PIPELINE_INDEX:
+            return r["to_status"]
+    return None
+
+
+def _allowed_next_statuses(conn: sqlite3.Connection, opportunity_id: str,
+                           current: str) -> set:
+    allowed = set(_EXIT_STATUSES)
+    allowed.add(_PAUSE_STATUS)
+    if current in _PIPELINE_INDEX:
+        allowed |= _pipeline_adjacent(current)
+    else:
+        # FOLLOW_UP or an exit status: resume only to the pipeline stage
+        # the opportunity was actually at, or one step adjacent to it --
+        # pausing/exiting is not a way to skip stages either.
+        anchor = _last_pipeline_anchor(conn, opportunity_id)
+        if anchor is None:
+            # No pipeline history at all (shouldn't happen -- creation
+            # always logs an initial DISCOVERED entry -- but fail open to
+            # the full pipeline rather than block every legitimate resume
+            # if it ever does).
+            allowed.update(_PIPELINE)
+        else:
+            allowed.add(anchor)
+            allowed |= _pipeline_adjacent(anchor)
+    return allowed
+
+
 def set_opportunity_status(conn: sqlite3.Connection, opportunity_id: str,
-                           new_status: str, note: str = "") -> None:
+                           new_status: str, note: str = "",
+                           force: bool = False) -> None:
     if new_status not in STATUSES:
         raise ValueError("unknown status: %s" % new_status)
     row = get_opportunity(conn, opportunity_id)
     if not row:
         raise KeyError(opportunity_id)
+    current = row["status"]
+    if new_status != current and not force:
+        allowed = _allowed_next_statuses(conn, opportunity_id, current)
+        if new_status not in allowed:
+            raise ValueError(
+                "%s -> %s skips pipeline stages (allowed from %s: %s). "
+                "Pass force=True with a note if this is a deliberate "
+                "correction, not a bug." % (
+                    current, new_status, current, sorted(allowed)))
+    if force and not note:
+        raise ValueError("force=True requires a non-empty note "
+                          "explaining the deliberate skip")
     ts = now_iso()
     with _tx(conn):
         conn.execute(
